@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-io
+  labels:
+    app: web-io
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-io
+  template:
+    metadata:
+      labels:
+        app: web-io
+    spec:
+      containers:
+        - name: web-io
+          image: bitnami/nginx:1.26.2
+          imagePullPolicy: IfNotPresent
+          resources:
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          ports:
+            - containerPort: 8080

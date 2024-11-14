@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-tag
+  labels:
+    app: web-tag
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-tag
+  template:
+    metadata:
+      labels:
+        app: web-tag
+    spec:
+      imagePullSecrets:
+        - name: registry-pull-secret
+      containers:
+        - name: web-tag
+          image: harbor.apps.dso.numerique-interieur.com/mi-home/nginx:a794502d
+          imagePullPolicy: Always
+          resources:
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          ports:
+            - containerPort: 8080

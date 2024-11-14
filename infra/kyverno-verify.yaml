@@ -1,0 +1,38 @@
+apiVersion: kyverno.io/v1
+kind: Policy
+metadata:
+  name: check-image
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  validationFailureAction: Enforce
+  background: false
+  webhookTimeoutSeconds: 30
+  failurePolicy: Fail
+  rules:
+    - name: check-image
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      verifyImages:
+        - type: Cosign
+          imageReferences:
+            - "harbor.apps.dso.numerique-interieur.com/mi-home/*"
+          imageRegistryCredentials:
+            secrets: 
+            - registry-pull-secret
+          mutateDigest: true
+          required: true
+          verifyDigest: true
+          attestors:
+            - count: 1
+              entries:
+                - keys:
+                    publicKeys: |-
+                      -----BEGIN PUBLIC KEY-----
+                      MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEYawsDoDJfdE93cBEG/+NBIr0Uc0j
+                      fp5pWvEmcJYCIVZ9WqHvL6U5WQlVTFOkmML0grsU581GfJ91lbAaWqZzeQ==
+                      -----END PUBLIC KEY-----
+                    signatureAlgorithm: sha256
