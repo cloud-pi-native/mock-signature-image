@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apache-wrong
+  labels:
+    app: web-wrong
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-wrong
+  template:
+    metadata:
+      labels:
+        app: web-wrong
+    spec:
+      imagePullSecrets:
+        - name: registry-pull-secret
+      containers:
+        - name: web-wrong
+          image: harbor.apps.dso.numerique-interieur.com/mi-home/apache:a794502d
+          imagePullPolicy: Always
+          resources:
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          ports:
+            - containerPort: 8080

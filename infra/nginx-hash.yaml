@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-hash
+  labels:
+    app: web-hash
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-hash
+  template:
+    metadata:
+      labels:
+        app: web-hash
+    spec:
+      imagePullSecrets:
+        - name: registry-pull-secret
+      containers:
+        - name: web-hash
+          image: harbor.apps.dso.numerique-interieur.com/mi-home/nginx@sha256:5d61cd1abab7159e0fa4421308e2b0a7e89dc06e7f54921fff062cf14cff94b8
+          imagePullPolicy: Always
+          resources:
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          ports:
+            - containerPort: 8080

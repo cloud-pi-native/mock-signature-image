@@ -1,0 +1,139 @@
+---
+include:
+  - project: $CATALOG_PATH
+    file: vault-ci.yml
+    ref: main
+
+stages:
+  - read-secret
+  - docker-build
+  - sign
+  - verify
+
+read_secret:
+  stage: read-secret
+  extends:
+    - .vault:read_secret
+
+nginx_build_push:
+  stage: docker-build
+  variables:
+    WORKING_DIR: ./
+    REGISTRY_URL: $IMAGE_REPOSITORY
+    DOCKERFILE: nginx.Dockerfile
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  before_script:
+    - export IMAGE_NAME=$(echo $DOCKERFILE | cut -d'.' -f1)
+  script:
+    - if [ ! -z $CA_BUNDLE ]; then cat $CA_BUNDLE >> /kaniko/ssl/certs/additional-ca-cert-bundle.crt; fi
+    - mkdir -p /kaniko/.docker
+    - echo "$DOCKER_AUTH" > /kaniko/.docker/config.json
+      ref=$(echo $CI_COMMIT_REF_NAME | tr '\/:' '-')
+    - >-
+      /kaniko/executor
+      --cache-dir=.kaniko-cache
+      --ignore-path=/usr/bin/newuidmap
+      --ignore-path=/usr/bin/newgidmap
+      --build-arg http_proxy=$http_proxy
+      --build-arg https_proxy=$https_proxy
+      --build-arg no_proxy=$no_proxy
+      --context="$CI_PROJECT_DIR"
+      --dockerfile="$CI_PROJECT_DIR/$WORKING_DIR/$DOCKERFILE"
+      --image-name-with-digest-file="${CI_PROJECT_DIR}/digest.txt"
+      --build-arg BASE_IMAGE=$BASE_IMAGE
+      $EXTRA_KANIKO_ARGS
+      --destination $REGISTRY_URL/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA
+  cache:
+    - key: cache-cache
+      paths:
+        - .kaniko-cache
+  artifacts:
+    name: "digest"
+    expose_as: 'Image digest'
+    paths:
+      - digest.txt
+
+apache_build_push:
+  stage: docker-build
+  variables:
+    WORKING_DIR: ./
+    REGISTRY_URL: $IMAGE_REPOSITORY
+    DOCKERFILE: apache.Dockerfile
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  before_script:
+    - export IMAGE_NAME=$(echo $DOCKERFILE | cut -d'.' -f1)
+  script:
+    - if [ ! -z $CA_BUNDLE ]; then cat $CA_BUNDLE >> /kaniko/ssl/certs/additional-ca-cert-bundle.crt; fi
+    - mkdir -p /kaniko/.docker
+    - echo "$DOCKER_AUTH" > /kaniko/.docker/config.json
+      ref=$(echo $CI_COMMIT_REF_NAME | tr '\/:' '-')
+    - >-
+      /kaniko/executor
+      --cache-dir=.kaniko-cache
+      --ignore-path=/usr/bin/newuidmap
+      --ignore-path=/usr/bin/newgidmap
+      --build-arg http_proxy=$http_proxy
+      --build-arg https_proxy=$https_proxy
+      --build-arg no_proxy=$no_proxy
+      --context="$CI_PROJECT_DIR"
+      --dockerfile="$CI_PROJECT_DIR/$WORKING_DIR/$DOCKERFILE"
+      --build-arg BASE_IMAGE=$BASE_IMAGE
+      $EXTRA_KANIKO_ARGS
+      --destination $REGISTRY_URL/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA
+  cache:
+    - key: cache-cache
+      paths:
+        - .kaniko-cache
+
+sign_nginx:
+  stage: sign
+  variables:
+    COSIGN_PASSWORD: $MON_SUPER_MDP
+    REGISTRY_URL: $IMAGE_REPOSITORY
+  image: bitnami/cosign:2.4.1-debian-12-r0
+  before_script:
+    - mkdir -p $HOME/.docker
+    - echo "$DOCKER_AUTH" > $HOME/.docker/config.json
+  script:
+    - IMAGE_DIGEST=$( tail -n 1 digest.txt )
+    - cosign sign --key env://MA_SUPER_CLE $IMAGE_DIGEST -y --annotations "Project=$CI_PROJECT_NAME"
+
+sign_apache:
+  stage: sign
+  variables:
+    COSIGN_PASSWORD: monsupermdp1234
+    REGISTRY_URL: $IMAGE_REPOSITORY
+  image: bitnami/cosign:2.4.1-debian-12-r0
+  before_script:
+    - mkdir -p $HOME/.docker
+    - echo "$DOCKER_AUTH" > $HOME/.docker/config.json
+    - rm cosign.pub
+  script:
+    - cosign generate-key-pair
+    - cosign sign --key cosign.key $REGISTRY_URL/apache:$CI_COMMIT_SHORT_SHA -y
+
+nginx_check:
+  stage: verify
+  variables:
+    REGISTRY_URL: $IMAGE_REPOSITORY
+  image: bitnami/cosign:2.4.1-debian-12-r0
+  before_script:
+    - mkdir -p $HOME/.docker
+    - echo "$DOCKER_AUTH" > $HOME/.docker/config.json
+  script:
+    - cosign verify --key cosign.pub $REGISTRY_URL/nginx:$CI_COMMIT_SHORT_SHA --annotations "Project=$CI_PROJECT_NAME" --output='text'
+
+apache_check:
+  stage: verify
+  variables:
+    REGISTRY_URL: $IMAGE_REPOSITORY
+  image: bitnami/cosign:2.4.1-debian-12-r0
+  before_script:
+    - mkdir -p $HOME/.docker
+    - echo "$DOCKER_AUTH" > $HOME/.docker/config.json
+  script:
+    - cosign verify --key cosign.pub $REGISTRY_URL/apache:$CI_COMMIT_SHORT_SHA --output='text'
