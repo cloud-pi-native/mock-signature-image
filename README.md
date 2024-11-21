@@ -84,9 +84,11 @@ Une exception est faite pour le stage read-secret qui permet la récupération d
         - cosign verify --key cosign.pub $REGISTRY_URL/nginx:$CI_COMMIT_SHORT_SHA --annotations "Project=$CI_PROJECT_NAME" --output='text'
     ```
 
-    Pour vérifier une signature, il faut utiliser la clé publique.
+    Pour vérifier une signature, il faut utiliser la clé publique. Il s'agit d'un job à titre indicatif,il n'est pas obligatoire dans votre projet.
 
-    Le job Apache échouera toujours, comme on peut le voir sur l'image ci-dessus, car la clé publique utilisée n'est pas la bonne. En revanche, cette clé permet de vérifier l'image Nginx. 
+    Le job Apache échouera toujours, comme on peut le voir sur l'image ci-dessus, car la clé publique utilisée n'est pas la bonne.
+    
+    En revanche, cette clé permet de vérifier l'image Nginx. 
     
     Il est également possible de vérifier les annotations de la signature.
 
@@ -96,7 +98,11 @@ Une exception est faite pour le stage read-secret qui permet la récupération d
 
 ## Déploiement
 
-Il est aussi possible de vérifier la signature d'une image lors d'un déploiement. Le dossier infra contient des manifests de déploiement :
+La vérification de la signature d'une image doit se faire lors du déploiement. 
+
+Pour cela il faut utiliser une regle Kyverno. Il est possible de renseigner la clé publique dans le manifest ou d'utiliser un secret contenat la clé.
+
+Le dossier infra contient des manifests:
 
 - `apache-wrong.yaml` --> Déploie l'image Apache signée.
 
@@ -107,6 +113,8 @@ Il est aussi possible de vérifier la signature d'une image lors d'un déploieme
 - `nginx-tag.yaml` --> Déploie l'image Nginx signée en utilisant le tag.
 
 - `kyverno-verify` --> Déploie une policy Kyverno qui vérifie la signature des images provenant de Harbor avec la clé publique présente sur le repository.
+
+- `secret.sops.enc.yaml` --> Déploie un secret contenant la clé publique
 
 Voici le résultat des déploiements depuis Argo-CD:
 

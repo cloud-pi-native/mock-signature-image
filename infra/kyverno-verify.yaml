@@ -36,3 +36,11 @@ spec:
                       fp5pWvEmcJYCIVZ9WqHvL6U5WQlVTFOkmML0grsU581GfJ91lbAaWqZzeQ==
                       -----END PUBLIC KEY-----
                     signatureAlgorithm: sha256
+#          attestors:
+#            - count: 1
+#              entries:
+#                - keys:
+#                    secret:
+#                      namespace: mi-home-dev-6293
+#                      name: sign-check
+#                    signatureAlgorithm: sha256
